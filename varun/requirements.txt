@@ -1,0 +1,4 @@
+numpy
+fastapi
+uvicorn
+# Planned for full build: torch, dgl, diffusers, xarray, dask, metpy, cartopy, cfgrib, geopandas

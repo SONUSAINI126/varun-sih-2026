@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VARUN – 5 km Extreme Weather Hazard Prototype</title>
+<style>
+:root{--bg:#f4f7fa;--ink:#10243a;--mut:#5b6b7c;--card:#fff;--line:#d5dee8;--acc:#0b5ea8}
+@media(prefers-color-scheme:dark){:root{--bg:#0c1622;--ink:#e6eef7;--mut:#93a4b6;--card:#132234;--line:#243a52;--acc:#5fb0ff}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 "Segoe UI",system-ui,sans-serif}
+main{max-width:1000px;margin:0 auto;padding:28px 18px}
+h1{margin:0;font-size:2rem;letter-spacing:.02em}p{color:var(--mut);margin:.3rem 0 1rem;max-width:68ch}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}@media(max-width:720px){.grid{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px}
+canvas{width:100%;height:auto;display:block;border-radius:6px;background:#dfe8f0}
+h2{font-size:1rem;margin:0 0 8px}.big{font-size:1.6rem;font-weight:700;color:var(--acc)}
+.ctl{margin:18px 0;display:flex;gap:14px;align-items:center;flex-wrap:wrap}input[type=range]{flex:1;min-width:200px;accent-color:var(--acc)}
+ol{color:var(--mut);padding-left:20px;margin:0}small{color:var(--mut)}
+</style></head><body><main>
+<h1>VARUN</h1>
+<p>From broad 12 km forecasts to 5 km probabilistic hazard zones. Team Eklavya, Smart India Hackathon 2026 (PS 26078). This prototype runs on <b>synthetic data</b> to illustrate the pipeline; the real models are on the roadmap.</p>
+<div class="ctl"><label for="d"><b>Forecast day: <span id="dv">3</span></b></label><input id="d" type="range" min="3" max="10" value="3"></div>
+<div class="grid">
+ <div class="card"><h2>Input: 12 km NWP (coarse, smoothed peak)</h2><canvas id="a" width="480" height="320"></canvas><div>Peak: <span class="big" id="pa"></span> mm</div></div>
+ <div class="card"><h2>Output: 5 km downscaled hazard (extremes preserved)</h2><canvas id="b" width="480" height="320"></canvas><div>Peak: <span class="big" id="pb"></span> mm &nbsp; <small>Confidence <span id="cf"></span>%</small></div></div>
+</div>
+<div class="card" style="margin-top:16px"><h2>Pipeline</h2><ol><li>Ingest 12 km ensemble forecasts (NCUM, NEPS-G, ECMWF, GFS)</li><li>Spherical GNN detects EFI anomalies and tracks their movement</li><li>Conditional diffusion downscales 12 km to 5 km</li><li>Physics gate removes unrealistic members</li><li>Probabilistic hazard field and location-specific alerts</li></ol></div>
+</main>
+<script>
+const W=480,H=320,F=20,C=48;
+function field(x,y,day,s){ // synthetic anomaly drifting across the map
+  const t=(day-3)/7,cx=110+t*260,cy=90+t*120+Math.sin(t*5)*25;
+  const g=(px,py,sg,a)=>a*Math.exp(-((x-px)**2+(y-py)**2)/(2*sg*sg));
+  return g(cx,cy,s,260)+g(cx+45,cy+30,s*.6,120)+15;
+}
+function ramp(v){const k=Math.min(v/260,1);return `hsl(${215-215*k},${55+40*k}%,${92-52*k}%)`}
+function draw(id,cell,samp,s,day){
+  const ctx=document.getElementById(id).getContext("2d");let peak=0;
+  for(let x=0;x<W;x+=cell)for(let y=0;y<H;y+=cell){
+    let v=0;for(let i=0;i<samp;i++)for(let j=0;j<samp;j++)v+=field(x+(i+.5)*cell/samp,y+(j+.5)*cell/samp,day,s);
+    v/=samp*samp;peak=Math.max(peak,v);ctx.fillStyle=ramp(v);ctx.fillRect(x,y,cell,cell);}
+  return peak;
+}
+function update(){
+  const day=+d.value;dv.textContent=day;
+  const a=draw("a",C,5,34,day),b=draw("b",F,2,34,day);
+  pa.textContent=Math.round(a);pb.textContent=Math.round(b);cf.textContent=Math.round(92-(day-3)*4.5);
+}
+d.addEventListener("input",update);update();
+</script></body></html>
